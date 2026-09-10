@@ -81,15 +81,31 @@ function isLocalHost(url: string): boolean {
 }
 
 /**
- * Full `pg` Pool config. Adds TLS for any non-local target (Supabase's Postgres
- * enforces SSL) while leaving local dev connections plain. Safe to call at
- * module load — reads only env vars.
+ * Full `pg` Pool config.
+ *
+ *  - Strips `sslmode` from the connection string (Supabase's POSTGRES_URL often
+ *    carries `?sslmode=require`, which makes `pg` set `ssl: true` and override
+ *    our `rejectUnauthorized: false` with strict cert verification).
+ *  - Adds TLS with `rejectUnauthorized: false` for any non-local target
+ *    (Supabase's pooler cert chains to a self-signed root that isn't in
+ *    Vercel's trimmed CA bundle).
+ *
+ * Safe to call at module load — reads only env vars.
  */
 export function connectionConfig(): PoolConfig {
   const { url } = resolveConnectionString();
+  // Strip sslmode / sslrootcert / sslcert / sslkey from the connection string
+  // so our explicit ssl option below takes precedence.
+  const cleanedUrl = url
+    .replace(/[?&]sslmode=[^&\s]*/g, "")
+    .replace(/[?&]sslrootcert=[^&\s]*/g, "")
+    .replace(/[?&]sslcert=[^&\s]*/g, "")
+    .replace(/[?&]sslkey=[^&\s]*/g, "")
+    .replace(/[?&]$/, "") // leave a trailing '?' if it was the last param
+    .replace(/\?&/, "?"); // collapse a doubled separator
   return {
-    connectionString: url,
-    ...(isLocalHost(url) ? {} : { ssl: { rejectUnauthorized: false } }),
+    connectionString: cleanedUrl,
+    ...(isLocalHost(cleanedUrl) ? {} : { ssl: { rejectUnauthorized: false } }),
   };
 }
 
