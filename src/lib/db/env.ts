@@ -36,20 +36,38 @@ export interface ResolvedConnection {
  * undefined: if nothing is configured it falls back to the local default so
  * the app still boots in a bare environment (the DB-backed calls will fail
  * with a clear ECONNREFUSED rather than crashing at import time).
+ *
+ * Precedence:
+ *   - On Vercel (process.env.VERCEL set): the managed Supabase/Vercel Postgres
+ *     wins, because a stray local `DATABASE_URL` can leak into a CLI local
+ *     deploy and would otherwise shadow it. Order:
+ *       POSTGRES_URL_NON_POOLING → POSTGRES_URL → DATABASE_URL → local-default
+ *   - Everywhere else (local dev): an explicit DATABASE_URL wins:
+ *       DATABASE_URL → POSTGRES_URL_NON_POOLING → POSTGRES_URL → local-default
  */
 export function resolveConnectionString(): ResolvedConnection {
+  const onVercel = !!process.env.VERCEL;
   const db = process.env.DATABASE_URL;
-  if (db && db.trim().length > 0) return { url: db, source: "DATABASE_URL" };
-
   const nonPooling = process.env.POSTGRES_URL_NON_POOLING;
-  if (nonPooling && nonPooling.trim().length > 0)
-    return { url: nonPooling, source: "POSTGRES_URL_NON_POOLING" };
-
   const pooled = process.env.POSTGRES_URL;
-  if (pooled && pooled.trim().length > 0)
-    return { url: pooled, source: "POSTGRES_URL" };
 
-  return { url: LOCAL_DEFAULT, source: "local-default" };
+  const inOrder = (val: string | undefined, source: ConnectionSource) =>
+    val && val.trim().length > 0 ? { url: val, source } : null;
+
+  if (onVercel) {
+    return (
+      inOrder(nonPooling, "POSTGRES_URL_NON_POOLING") ??
+      inOrder(pooled, "POSTGRES_URL") ??
+      inOrder(db, "DATABASE_URL") ??
+      { url: LOCAL_DEFAULT, source: "local-default" }
+    );
+  }
+  return (
+    inOrder(db, "DATABASE_URL") ??
+    inOrder(nonPooling, "POSTGRES_URL_NON_POOLING") ??
+    inOrder(pooled, "POSTGRES_URL") ??
+    { url: LOCAL_DEFAULT, source: "local-default" }
+  );
 }
 
 /** True when the resolved target is a local address that won't use SSL. */
