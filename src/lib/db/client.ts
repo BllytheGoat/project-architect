@@ -1,16 +1,28 @@
 // PostgreSQL connection pool. Guarded on globalThis so Next.js HMR / dev
 // reloads don't spawn a new pool per module evaluation.
+//
+// The connection is resolved by ./env so the app works with an explicit
+// DATABASE_URL (local dev) *or* Supabase / Vercel-managed Postgres via the
+// POSTGRES_URL_NON_POOLING / POSTGRES_URL vars Vercel injects at runtime —
+// no repo changes or new secrets required to switch targets. TLS is enabled
+// automatically for non-local targets (Supabase's Postgres enforces SSL).
 import { Pool, type PoolClient, type QueryResultRow } from "pg";
+import { connectionConfig, resolveConnectionString, connectionTarget } from "./env";
 
 declare global {
   // eslint-disable-next-line no-var
   var __pgPool: Pool | undefined;
 }
 
+const resolved = resolveConnectionString();
+if (process.env.NODE_ENV === "development" && resolved.source === "local-default") {
+  console.log(`[db] no DATABASE_URL / POSTGRES_* set — using local default ${connectionTarget()}`);
+}
+
 export const pool: Pool =
   globalThis.__pgPool ??
   new Pool({
-    connectionString: process.env.DATABASE_URL ?? "postgres://architect:architect_dev@127.0.0.1:5432/project_architect",
+    ...connectionConfig(),
     max: 10,
     idleTimeoutMillis: 30_000,
   });
