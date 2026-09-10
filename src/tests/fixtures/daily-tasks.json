@@ -1,0 +1,94 @@
+{
+  "project": {
+    "name": "Daily Tasks",
+    "description": "A lightweight to-do app for tracking a personal daily task list with reminders and simple categories.",
+    "problem": "People juggle tasks across sticky notes and multiple apps and lose track of what matters each day.",
+    "goals": ["Capture tasks fast", "See today's top priorities at a glance"],
+    "targetUsers": ["busy professionals", "students"],
+    "successCriteria": ["A user can add a task in under 5 seconds and see it grouped by category"],
+    "userStories": ["As a student, I can add tasks and mark the three most important for today."],
+    "facts": {}
+  },
+  "features": [
+    {
+      "id": "c1000000-0000-4000-8000-000000000001",
+      "name": "Task management",
+      "description": "Create, complete, and categorize tasks.",
+      "priority": "must_have",
+      "status": "confirmed",
+      "source": "user"
+    },
+    {
+      "id": "c1000000-0000-4000-8000-000000000002",
+      "name": "Daily top-3 view",
+      "description": "Surface the three highest-priority tasks for today.",
+      "priority": "should_have",
+      "status": "confirmed",
+      "source": "user"
+    }
+  ],
+  "requirements": [
+    {
+      "id": "FR-001",
+      "type": "functional",
+      "title": "Users can create and complete tasks",
+      "description": "Tasks have a title, optional category, and a done state.",
+      "priority": "critical",
+      "status": "confirmed"
+    },
+    {
+      "id": "NFR-001",
+      "type": "non_functional",
+      "title": "Task list loads in under a second",
+      "description": "The home screen must feel instant on 3G.",
+      "priority": "high",
+      "status": "confirmed"
+    }
+  ],
+  "decisions": [
+    {
+      "id": "c2000000-0000-4000-8000-000000000001",
+      "topic": "Data model",
+      "decision": "Each task is a row with an optional user_id; no separate projects table for v1.",
+      "reason": "Keep v1 simple; a single daily list is the core value.",
+      "source": "ai_recommendation",
+      "status": "accepted"
+    }
+  ],
+  "assumptions": [
+    {
+      "id": "A-001",
+      "statement": "Reminders are optional in v1.",
+      "reason": "Adds push/permission complexity; defer.",
+      "status": "pending"
+    }
+  ],
+  "recommendations": [],
+  "conflicts": [],
+  "architecture": {
+    "frontend": "React web app (mobile-first).",
+    "backend": "Next.js API routes.",
+    "database": "PostgreSQL",
+    "auth": "Email/password accounts."
+  },
+  "technology": {
+    "languages": ["TypeScript"],
+    "frameworks": ["Next.js"],
+    "integrations": []
+  },
+  "security": {
+    "authModel": "Email/password with server-side sessions.",
+    "accessControl": "Each user sees only their own tasks.",
+    "sensitiveData": "User credentials and task data."
+  },
+  "testing": {
+    "criticalWorkflows": ["Add a task", "Complete a task", "View top-3"],
+    "acceptanceCriteria": ["Tasks persist after reload and are grouped by category"]
+  },
+  "deployment": {
+    "target": "Vercel",
+    "environmentVariables": ["DATABASE_URL"],
+    "externalServices": []
+  },
+  "version": 1
+}

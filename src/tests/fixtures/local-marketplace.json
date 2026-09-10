@@ -1,0 +1,103 @@
+{
+  "project": {
+    "name": "Local Marketplace",
+    "description": "A small neighborhood marketplace where people list used items with photos and mark them sold when claimed locally.",
+    "problem": "People in the neighborhood have no shared, low-effort place to sell or buy used items without going through big platforms.",
+    "goals": ["List an item with photos in under a minute", "Buy locally without shipping"],
+    "targetUsers": ["residents", "local businesses"],
+    "successCriteria": ["A user can publish a listing and another user can mark it as sold/claimed"],
+    "userStories": ["As a resident, I can photograph a bookshelf and list it with a price."],
+    "facts": {}
+  },
+  "features": [
+    {
+      "id": "e1000000-0000-4000-8000-000000000001",
+      "name": "Listing marketplace",
+      "description": "Create, browse, and mark listings as sold.",
+      "priority": "must_have",
+      "status": "confirmed",
+      "source": "user"
+    },
+    {
+      "id": "e1000000-0000-4000-8000-000000000002",
+      "name": "Photo uploads",
+      "description": "Attach up to 5 photos per listing.",
+      "priority": "should_have",
+      "status": "confirmed",
+      "source": "user"
+    }
+  ],
+  "requirements": [
+    {
+      "id": "FR-001",
+      "type": "functional",
+      "title": "Users can create a listing with photos and a price",
+      "description": "Listings have a title, price, category, up to 5 photos, and a sold flag.",
+      "priority": "critical",
+      "status": "confirmed"
+    },
+    {
+      "id": "FR-002",
+      "type": "functional",
+      "title": "Users can browse and filter listings",
+      "description": "Filter by category and sort by newest.",
+      "priority": "high",
+      "status": "confirmed"
+    },
+    {
+      "id": "NFR-001",
+      "type": "non_functional",
+      "title": "Photos are resized and stored efficiently",
+      "description": "Generate thumbnails on upload to keep the gallery fast.",
+      "priority": "medium",
+      "status": "confirmed"
+    }
+  ],
+  "decisions": [
+    {
+      "id": "e2000000-0000-4000-8000-000000000001",
+      "topic": "Payments",
+      "decision": "No in-app payments in v1 — hand off to cash or external transfer.",
+      "reason": "Payment processing is out of scope for a local marketplace.",
+      "source": "user",
+      "status": "accepted"
+    }
+  ],
+  "assumptions": [
+    {
+      "id": "A-001",
+      "statement": "Listings are public but require a user account to create.",
+      "reason": "Open browsing, accountable posting.",
+      "status": "approved"
+    }
+  ],
+  "recommendations": [],
+  "conflicts": [],
+  "architecture": {
+    "frontend": "Next.js web + mobile-responsive.",
+    "backend": "Next.js API routes.",
+    "database": "PostgreSQL",
+    "auth": "Email/password accounts.",
+    "fileStorage": "Object storage for listing photos"
+  },
+  "technology": {
+    "languages": ["TypeScript"],
+    "frameworks": ["Next.js"],
+    "integrations": ["object storage"]
+  },
+  "security": {
+    "authModel": "Email/password with sessions.",
+    "accessControl": "Only the listing owner can edit or mark sold; anyone can view public listings.",
+    "sensitiveData": "User credentials and uploaded photos."
+  },
+  "testing": {
+    "criticalWorkflows": ["Create a listing", "Add photos", "Browse and filter", "Mark sold"],
+    "acceptanceCriteria": ["A created listing is visible to others and can be marked sold by the owner only"]
+  },
+  "deployment": {
+    "target": "Vercel",
+    "environmentVariables": ["DATABASE_URL", "S3_BUCKET"],
+    "externalServices": ["object storage"]
+  },
+  "version": 2
+}

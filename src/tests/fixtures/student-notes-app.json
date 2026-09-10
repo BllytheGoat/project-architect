@@ -1,0 +1,103 @@
+{
+  "project": {
+    "name": "Student Notes Hub",
+    "description": "A platform where students can upload school notes, share them with other students, and discuss them in comments.",
+    "problem": "Students duplicate effort re-typing notes and there is no shared place to discuss them.",
+    "goals": ["Let students share notes easily", "Enable discussion on shared notes"],
+    "targetUsers": ["students"],
+    "successCriteria": ["A student can upload a note and another student can comment on it"],
+    "userStories": ["As a student, I can upload a PDF note and share it with my class."],
+    "facts": {}
+  },
+  "features": [
+    {
+      "id": "a1000000-0000-4000-8000-000000000001",
+      "name": "Note sharing",
+      "description": "Students upload and share notes.",
+      "priority": "must_have",
+      "status": "confirmed",
+      "source": "user"
+    },
+    {
+      "id": "a1000000-0000-4000-8000-000000000002",
+      "name": "Accounts",
+      "description": "Students sign up and manage their notes.",
+      "priority": "must_have",
+      "status": "confirmed",
+      "source": "user"
+    }
+  ],
+  "requirements": [
+    {
+      "id": "FR-001",
+      "type": "functional",
+      "title": "Users can upload PDF notes",
+      "description": "A user can upload a PDF note file and it is stored.",
+      "priority": "critical",
+      "status": "confirmed"
+    },
+    {
+      "id": "FR-002",
+      "type": "functional",
+      "title": "Users can comment on shared notes",
+      "description": "Authorized users can add discussion comments.",
+      "priority": "high",
+      "status": "confirmed"
+    },
+    {
+      "id": "NFR-001",
+      "type": "non_functional",
+      "title": "Private notes are only accessible to authorized users",
+      "description": "Access control enforced server-side.",
+      "priority": "critical",
+      "status": "confirmed"
+    }
+  ],
+  "decisions": [
+    {
+      "id": "b1000000-0000-4000-8000-000000000001",
+      "topic": "Database",
+      "decision": "Use PostgreSQL.",
+      "reason": "Notes, users, and comments are relational.",
+      "source": "user",
+      "status": "accepted"
+    }
+  ],
+  "assumptions": [
+    {
+      "id": "A-001",
+      "statement": "Only registered users can upload notes.",
+      "reason": "The user asked for user-owned notes.",
+      "status": "approved"
+    }
+  ],
+  "recommendations": [],
+  "conflicts": [],
+  "architecture": {
+    "frontend": "Next.js (React) responsive web app.",
+    "backend": "Next.js API routes.",
+    "database": "PostgreSQL",
+    "auth": "Email/password accounts with server-side sessions.",
+    "fileStorage": "Object storage for uploaded note files."
+  },
+  "technology": {
+    "languages": ["TypeScript"],
+    "frameworks": ["Next.js"],
+    "integrations": []
+  },
+  "security": {
+    "authModel": "Email/password with server-side sessions.",
+    "accessControl": "Users can only access and comment on notes they are allowed to view.",
+    "sensitiveData": "Uploaded files and account credentials are stored securely."
+  },
+  "testing": {
+    "criticalWorkflows": ["Upload a note", "Comment on a shared note", "Sign up and sign in"],
+    "acceptanceCriteria": ["A student can upload a note and another student can comment on it"]
+  },
+  "deployment": {
+    "target": "Vercel",
+    "environmentVariables": ["DATABASE_URL", "AI_API_KEY"],
+    "externalServices": ["object storage"]
+  },
+  "version": 3
+}

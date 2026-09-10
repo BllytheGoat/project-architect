@@ -1,0 +1,101 @@
+{
+  "project": {
+    "name": "Team File Drop",
+    "description": "A simple internal tool for small teams to share files quickly, with links that expire after 7 days.",
+    "problem": "Teams lose files in email threads and Slack; there is no single, link-based place to drop and fetch shared files.",
+    "goals": ["Share a file with anyone via a link that expires", "Keep large files from clogging email"],
+    "targetUsers": ["product managers", "designers", "engineers"],
+    "successCriteria": ["A user uploads a file, gets a shareable link, and a teammate can download it after 7 days without account sign-in"],
+    "userStories": ["As a designer, I can drop a 200MB mockup and send a link that works for a week."],
+    "facts": {}
+  },
+  "features": [
+    {
+      "id": "d1000000-0000-4000-8000-000000000001",
+      "name": "Upload and link",
+      "description": "Upload a file and get a short-lived shareable link.",
+      "priority": "must_have",
+      "status": "confirmed",
+      "source": "user"
+    },
+    {
+      "id": "d1000000-0000-4000-8000-000000000002",
+      "name": "Expiring links",
+      "description": "Links expire after a configurable window (default 7 days).",
+      "priority": "must_have",
+      "status": "confirmed",
+      "source": "user"
+    }
+  ],
+  "requirements": [
+    {
+      "id": "FR-001",
+      "type": "functional",
+      "title": "Users can upload files up to 2GB",
+      "description": "Support multipart uploads for files up to 2GB.",
+      "priority": "high",
+      "status": "confirmed"
+    },
+    {
+      "id": "NFR-001",
+      "type": "non_functional",
+      "title": "Expiring links stop working after their window",
+      "description": "Expired links return a clear 410 Gone response.",
+      "priority": "critical",
+      "status": "confirmed"
+    }
+  ],
+  "decisions": [
+    {
+      "id": "d2000000-0000-4000-8000-000000000001",
+      "topic": "File storage",
+      "decision": "Store files in object storage (S3-compatible); keep only a record of them in PostgreSQL.",
+      "reason": "Files are large and transient; object storage is cheaper and scales.",
+      "source": "ai_recommendation",
+      "status": "accepted"
+    }
+  ],
+  "assumptions": [
+    {
+      "id": "A-001",
+      "statement": "Downloaders do not need an account.",
+      "reason": "The goal is frictionless sharing via link.",
+      "status": "approved"
+    },
+    {
+      "id": "A-002",
+      "statement": "Files are deleted automatically when links expire.",
+      "reason": "Keeps storage costs bounded.",
+      "status": "pending"
+    }
+  ],
+  "recommendations": [],
+  "conflicts": [],
+  "architecture": {
+    "frontend": "Next.js single-page uploader.",
+    "backend": "Next.js API routes for upload/download link generation.",
+    "database": "PostgreSQL",
+    "auth": "No auth for downloaders; upload limited to authenticated team members.",
+    "fileStorage": "S3-compatible object storage"
+  },
+  "technology": {
+    "languages": ["TypeScript"],
+    "frameworks": ["Next.js"],
+    "integrations": ["S3-compatible object storage"]
+  },
+  "security": {
+    "authModel": "Team members sign in; download links are unguessable and expiring.",
+    "accessControl": "Only the uploader or a team member can view uploads made by the team.",
+    "sensitiveData": "File bytes in object storage; link tokens hashed at rest."
+  },
+  "testing": {
+    "criticalWorkflows": ["Upload a file", "Download via a fresh link", "Link returns 410 after expiry"],
+    "acceptanceCriteria": ["A file uploaded by a team member can be downloaded via the link within the window, and fails after"]
+  },
+  "deployment": {
+    "target": "Vercel",
+    "environmentVariables": ["DATABASE_URL", "S3_BUCKET", "S3_ACCESS_KEY", "S3_SECRET_KEY"],
+    "externalServices": ["object storage"]
+  },
+  "version": 2
+}
