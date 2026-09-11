@@ -161,6 +161,7 @@ export function InterviewWorkspace({
         name={title}
         saved={saved}
         readiness={readiness?.percent ?? 0}
+        projectId={projectId}
       />
       <main className="mx-auto grid w-full max-w-5xl gap-6 px-4 py-6 sm:px-8 lg:grid-cols-[1fr_300px]">
         {/* interview column */}
@@ -234,10 +235,12 @@ function WorkspaceBar({
   name,
   saved,
   readiness,
+  projectId,
 }: {
   name: string;
   saved: "idle" | "saving" | "saved";
   readiness: number;
+  projectId: string;
 }) {
   return (
     <div className="sticky top-0 z-10 border-b border-border bg-card/90 backdrop-blur">
@@ -262,7 +265,7 @@ function WorkspaceBar({
             <span className="text-xs tabular-nums text-muted-foreground">{Math.round(readiness)}%</span>
           </div>
           <Link
-            href="/projects"
+            href={`/projects/${projectId}/review`}
             className={buttonVariants({ variant: "outline", size: "sm", className: "ml-1" })}
           >
             Review
