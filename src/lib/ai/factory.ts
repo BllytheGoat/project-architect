@@ -27,7 +27,9 @@ export function getAIProvider(forceMock = false): AIProvider {
 
   const baseUrl = process.env.AI_BASE_URL ?? "https://apihub.agnes-ai.com/v1";
   const apiKey = process.env.AI_API_KEY ?? "";
-  const model = process.env.AI_MODEL ?? "agnes-3.0-flash";
+  // Default matches the validated, live-deployed model. AI_MODEL should be set
+  // explicitly in the environment; this fallback is only a safety net.
+  const model = process.env.AI_MODEL ?? "agnes-2.5-flash";
 
   if (!apiKey) {
     // No credentials configured -> degrade to mock so the app still works.

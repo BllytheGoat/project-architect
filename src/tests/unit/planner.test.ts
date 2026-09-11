@@ -1,7 +1,7 @@
 // Unit tests for the Phase 2 deterministic planners + dependency ordering.
 import { describe, it, expect } from "vitest";
 import { seedState } from "@/types";
-import type { ProjectState, Feature } from "@/types";
+import type { ProjectState, Feature, Decision } from "@/types";
 import {
   generateAllPlanningSections,
   topologicalOrderFeatures,
@@ -130,5 +130,92 @@ describe("topological feature ordering", () => {
     const ids = topologicalOrderFeatures(s, feats).map((f) => f.id);
     expect(ids).toContain("x");
     expect(ids).toContain("y");
+  });
+});
+
+describe("record_decision supersede (Phase 2 §5/§18)", () => {
+  const D1 = "b1000000-0000-4000-8000-000000000001";
+  const D2 = "b1000000-0000-4000-8000-000000000002";
+
+  function decision(id: string, topic: string, text: string, status: Decision["status"]): Decision {
+    return {
+      id,
+      topic,
+      decision: text,
+      reason: "reason",
+      source: "user",
+      status,
+    };
+  }
+
+  it("a 'changed' decision supersedes the prior one instead of clobbering it", () => {
+    const base: ProjectState = {
+      ...seedState("x"),
+      decisions: [decision(D1, "Database", "Use MongoDB", "accepted")],
+    };
+    const out = applyPlannerResponse(
+      {
+        message: "m",
+        action: "record_information",
+        updates: [{ op: "record_decision", decision: decision(D2, "Database", "Use PostgreSQL", "changed") }],
+        recommendations: [],
+        conflicts: [],
+      },
+      base,
+    ).state;
+
+    const byId = new Map(out.decisions.map((d) => [d.id, d]));
+    // Both the historical and the current decision survive.
+    expect(out.decisions).toHaveLength(2);
+    const old = byId.get(D1)!;
+    const fresh = byId.get(D2)!;
+    // Prior decision is preserved (not overwritten) and marked superseded.
+    expect(old.decision).toBe("Use MongoDB");
+    expect(old.status).toBe("superseded");
+    expect(old.supersededBy).toBe(D2);
+    // New decision is recorded as the current accepted one.
+    expect(fresh.decision).toBe("Use PostgreSQL");
+    expect(fresh.status).toBe("accepted");
+  });
+
+  it("is idempotent: re-applying the same changed decision does not mutate further", () => {
+    const base: ProjectState = {
+      ...seedState("x"),
+      decisions: [decision(D1, "Database", "Use MongoDB", "accepted")],
+    };
+    const resp = {
+      message: "m",
+      action: "record_information",
+      updates: [{ op: "record_decision", decision: decision(D2, "Database", "Use PostgreSQL", "changed") }],
+      recommendations: [],
+      conflicts: [],
+    };
+    const once = applyPlannerResponse(resp, base).state;
+    const twice = applyPlannerResponse(resp, once).state;
+    expect(once.version).toBe(base.version + 1);
+    // Second application is a no-op: no new decision, version not bumped again.
+    expect(twice.decisions).toHaveLength(2);
+    expect(twice.version).toBe(once.version);
+  });
+
+  it("does not supersede when the decision is a fresh 'accepted' on a new topic", () => {
+    const base: ProjectState = {
+      ...seedState("x"),
+      decisions: [decision(D1, "Database", "Use MongoDB", "accepted")],
+    };
+    const out = applyPlannerResponse(
+      {
+        message: "m",
+        action: "record_information",
+        updates: [{ op: "record_decision", decision: decision(D2, "Cache", "Use Redis", "accepted") }],
+        recommendations: [],
+        conflicts: [],
+      },
+      base,
+    ).state;
+    // Different topic: both remain accepted; no supersede link.
+    expect(out.decisions).toHaveLength(2);
+    expect(out.decisions.find((d) => d.id === D1)!.status).toBe("accepted");
+    expect(out.decisions.find((d) => d.id === D2)!.status).toBe("accepted");
   });
 });

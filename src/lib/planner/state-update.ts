@@ -123,19 +123,22 @@ function applyUpdate(state: ProjectState, update: PlannerResponse["updates"][num
     }
     case "record_decision": {
       const d = update.decision;
-      const existing = s.decisions.find((x) => sameDecision(x, d));
-      if (existing) {
-        // A "changed" decision overrides the previous one for the same topic.
-        if (d.status === "changed") {
-          existing.decision = d.decision;
-          existing.reason = d.reason;
-          existing.status = "accepted";
-          existing.alternatives = d.alternatives ?? existing.alternatives;
-          existing.source = d.source;
-        }
-      } else {
-        s.decisions.push(d);
+      // Idempotency: this exact decision (by its minted id) is already
+      // recorded — applying the same response twice must not mutate further.
+      if (s.decisions.some((x) => x.id === d.id)) {
+        return state;
       }
+      const prior = s.decisions.find((x) => sameDecision(x, d));
+      if (prior && d.status === "changed") {
+        // Supersede, don't clobber: preserve the historical decision, mark it
+        // status:"superseded" and link it via supersededBy. This honours Phase
+        // 2 §5 ("never silently destroy historical information") and the
+        // §18 superseded lifecycle (mirrored in conflicts.ts). The new decision
+        // is recorded as the current "accepted" one.
+        prior.status = "superseded";
+        prior.supersededBy = d.id;
+      }
+      s.decisions.push({ ...d, status: d.status === "changed" ? "accepted" : d.status });
       return s;
     }
     case "record_assumption": {
