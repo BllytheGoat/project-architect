@@ -8,12 +8,14 @@
 
 import { Buffer } from "node:buffer";
 
-// Precomputed CRC32 table (IEEE, polynomial 0xED28F589, reflected).
+// Precomputed CRC32 table (IEEE 802.3 / zlib, reflected, polynomial
+// 0xEDB88320). Must match node:zlib / python:zlib exactly, or standard
+// unzip tools reject the archive with "Bad CRC-32".
 const CRC_TABLE = (() => {
   const t = new Uint32Array(256);
   for (let i = 0; i < 256; i++) {
     let c = i;
-    for (let k = 0; k < 8; k++) c = c & 1 ? 0xed28f589 ^ (c >>> 1) : c >>> 1;
+    for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
     t[i] = c >>> 0;
   }
   return t;
