@@ -64,16 +64,20 @@ export async function createProject(
   user: AuthUser,
   input: { name?: string; idea: string },
 ): Promise<ProjectRow> {
-  const name = input.name?.trim() || "Untitled project";
+  const provided = input.name?.trim() || "";
+  // The dashboard row keeps a display fallback; the *state* name stays empty
+  // when the user didn't supply one so the idea analyzer can adopt a better
+  // suggestion (see analyzeIdea: `name: state.project.name || suggestion`).
+  const rowName = provided || "Untitled project";
   const res = await query<ProjectRow>(
     "INSERT INTO projects (user_id, name, description) VALUES ($1, $2, $3) RETURNING *",
-    [user.id, name, input.idea.trim()],
+    [user.id, rowName, input.idea.trim()],
   );
   const row = res.rows[0];
   // Seed the canonical state from the raw idea, carrying the provided name so
   // the state title is consistent with the project row from the start.
   const state: ProjectState = projectStateSchema.parse(seedState(input.idea.trim()));
-  state.project.name = name;
+  if (provided) state.project.name = provided;
   await query(
     "INSERT INTO project_state (project_id, state_json, version) VALUES ($1, $2, 1)",
     [row.id, JSON.stringify(state)],

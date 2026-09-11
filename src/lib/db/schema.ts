@@ -90,6 +90,36 @@ CREATE TABLE IF NOT EXISTS project_plans (
 );
 CREATE INDEX IF NOT EXISTS project_plans_project_idx ON project_plans(project_id, version);
 
+-- Phase 2: structured plan-version metadata. Unlike project_plans (which stores
+-- the rendered markdown), this records *why* a version was cut and the source
+-- state version it was derived from (spec §39). A full visual diff is optional;
+-- the metadata is deterministic and queryable.
+CREATE TABLE IF NOT EXISTS plan_versions (
+  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  project_id    UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  version       INTEGER NOT NULL,
+  reason        TEXT NOT NULL DEFAULT '',
+  state_version INTEGER NOT NULL DEFAULT 1,
+  doc_count     INTEGER NOT NULL DEFAULT 0,
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (project_id, version)
+);
+CREATE INDEX IF NOT EXISTS plan_versions_project_idx ON plan_versions(project_id, version DESC);
+
+-- Phase 2: lightweight audit trail of important state changes (spec §50).
+-- Append-only; one row per notable mutation, ordered by time.
+CREATE TABLE IF NOT EXISTS audit_events (
+  id         BIGSERIAL PRIMARY KEY,
+  project_id UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  actor      TEXT NOT NULL DEFAULT 'system',      -- user | ai | system
+  action     TEXT NOT NULL,                       -- e.g. 'change_auth_model'
+  summary    TEXT NOT NULL DEFAULT '',
+  entities   JSONB NOT NULL DEFAULT '[]',         -- affected stable IDs (FEAT-001, ...)
+  version    INTEGER NOT NULL DEFAULT 0,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS audit_events_project_idx ON audit_events(project_id, created_at DESC);
+
 -- keep projects.updated_at current on any change
 CREATE OR REPLACE FUNCTION set_projects_updated_at() RETURNS trigger AS \$\$
 BEGIN

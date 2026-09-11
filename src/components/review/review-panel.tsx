@@ -160,7 +160,10 @@ export function ReviewPanel({ projectId, initial }: { projectId: string; initial
 
             {/* CTA */}
             <div className="flex flex-wrap gap-3">
-              <Link href={`/projects/${projectId}/export`} className={buttonVariants({ variant: "default", className: "h-11" })}>
+              <Link href={`/projects/${projectId}/planning`} className={buttonVariants({ variant: "default", className: "h-11" })}>
+                Open plan workspace
+              </Link>
+              <Link href={`/projects/${projectId}/export`} className={buttonVariants({ variant: "secondary", className: "h-11" })}>
                 Generate PROJECT.md
               </Link>
               <Link href={`/projects/${projectId}/interview`} className={buttonVariants({ variant: "outline", className: "h-11" })}>

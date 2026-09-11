@@ -89,6 +89,12 @@ export default async function ProjectPage({
             {readiness.canComplete ? "Continue interview" : "Resume interview"}
           </Link>
           <Link
+            href={`/projects/${projectId}/planning`}
+            className={buttonVariants({ variant: "secondary", className: "h-11" })}
+          >
+            Open plan workspace
+          </Link>
+          <Link
             href={`/projects/${projectId}/review`}
             className={buttonVariants({ variant: "outline", className: "h-11" })}
           >
@@ -96,7 +102,7 @@ export default async function ProjectPage({
           </Link>
           <Link
             href={`/projects/${projectId}/export`}
-            className={buttonVariants({ variant: "secondary", className: "h-11" })}
+            className={buttonVariants({ variant: "ghost", className: "h-11" })}
           >
             Export PROJECT.md
           </Link>

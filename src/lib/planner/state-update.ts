@@ -3,7 +3,7 @@
 // applying the same logical update twice does not duplicate requirements,
 // features, decisions, or assumptions.
 
-import type { ProjectState } from "@/types";
+import type { ProjectState, StateUpdate } from "@/types";
 import {
   stateUpdateSchema,
   plannerResponseSchema,
@@ -46,6 +46,33 @@ function sameDecision(a: ProjectState["decisions"][number], b: ProjectState["dec
 }
 function sameAssumption(a: ProjectState["assumptions"][number], b: ProjectState["assumptions"][number]) {
   return a.statement.toLowerCase().trim() === b.statement.toLowerCase().trim();
+}
+
+/**
+ * Generic, idempotent upsert for any Phase 2 planning section keyed by `id`.
+ * Returns true when the state actually changed. Keeps historical items intact
+ * (upsert by id — never deletes a sibling with a different id, spec §5/§55).
+ */
+function upsertEntity<T extends { id: string }>(s: ProjectState, key: string, item: T): boolean {
+  const arr = s[key as keyof ProjectState] as unknown as T[];
+  const idx = arr.findIndex((x) => x.id === item.id);
+  if (idx === -1) {
+    arr.push(item);
+    return true;
+  }
+  if (JSON.stringify(arr[idx]) !== JSON.stringify(item)) {
+    arr[idx] = item;
+    return true;
+  }
+  return false;
+}
+
+/** Whole-section replacement (planner regeneration). Idempotent by content. */
+function setSection<T extends { id: string }>(s: ProjectState, key: string, items: T[]): boolean {
+  const arr = s[key as keyof ProjectState] as unknown as T[];
+  if (JSON.stringify(arr) === JSON.stringify(items)) return false;
+  (s[key as keyof ProjectState] as unknown) = items;
+  return true;
 }
 
 /**
@@ -171,6 +198,89 @@ function applyUpdate(state: ProjectState, update: PlannerResponse["updates"][num
       }
       return s;
     }
+    // ---- Phase 2 planning entities (idempotent upserts by stable id) ----
+    // Each returns a did-change flag; report a no-op as unchanged so a full
+    // re-plan that adds nothing does NOT bump the plan version (§44/§49).
+    case "upsert_user_story":
+      return upsertEntity(s, "userStories", update.story) ? s : state;
+    case "upsert_acceptance_criterion":
+      return upsertEntity(s, "acceptanceCriteria", update.criterion) ? s : state;
+    case "upsert_dependency":
+      return upsertEntity(s, "dependencies", update.dependency) ? s : state;
+    case "upsert_architecture_component":
+      return upsertEntity(s, "architectureComponents", update.component) ? s : state;
+    case "upsert_database_entity":
+      return upsertEntity(s, "database", update.entity) ? s : state;
+    case "upsert_api_endpoint":
+      return upsertEntity(s, "api", update.endpoint) ? s : state;
+    case "upsert_page":
+      return upsertEntity(s, "pages", update.page) ? s : state;
+    case "upsert_user_flow":
+      return upsertEntity(s, "userFlows", update.flow) ? s : state;
+    case "upsert_security_item":
+      return upsertEntity(s, "securityItems", update.item) ? s : state;
+    case "upsert_test_case":
+      return upsertEntity(s, "testCases", update.item) ? s : state;
+    case "upsert_implementation_task":
+      return upsertEntity(s, "implementationTasks", update.task) ? s : state;
+    case "upsert_implementation_phase":
+      return upsertEntity(s, "implementationPhases", update.phase) ? s : state;
+    // ---- Whole-section replacement (planner regeneration) ----
+    case "set_user_stories":
+      return setSection(s, "userStories", update.value) ? s : state;
+    case "set_acceptance_criteria":
+      return setSection(s, "acceptanceCriteria", update.value) ? s : state;
+    case "set_dependencies":
+      return setSection(s, "dependencies", update.value) ? s : state;
+    case "set_architecture_components":
+      return setSection(s, "architectureComponents", update.value) ? s : state;
+    case "set_database":
+      return setSection(s, "database", update.value) ? s : state;
+    case "set_api":
+      return setSection(s, "api", update.value) ? s : state;
+    case "set_pages":
+      return setSection(s, "pages", update.value) ? s : state;
+    case "set_user_flows":
+      return setSection(s, "userFlows", update.value) ? s : state;
+    case "set_security_items":
+      return setSection(s, "securityItems", update.value) ? s : state;
+    case "set_test_cases":
+      return setSection(s, "testCases", update.value) ? s : state;
+    case "set_implementation_phases":
+      return setSection(s, "implementationPhases", update.value) ? s : state;
+    case "set_implementation_tasks":
+      return setSection(s, "implementationTasks", update.value) ? s : state;
+    // ---- Status / scope / metadata setters ----
+    case "set_feature_scope": {
+      const f = s.features.find((x) => x.id === update.featureId);
+      if (f && f.scope !== update.scope) f.scope = update.scope;
+      return s;
+    }
+    case "set_requirement_status": {
+      const r = s.requirements.find((x) => x.id === update.requirementId);
+      if (r && r.status !== update.status) r.status = update.status;
+      return s;
+    }
+    case "set_decision_status": {
+      const d = s.decisions.find((x) => x.id === update.decisionId);
+      if (d && d.status !== update.status) d.status = update.status;
+      return s;
+    }
+    case "set_assumption_status": {
+      const a = s.assumptions.find((x) => x.id === update.assumptionId);
+      if (a && a.status !== update.status) a.status = update.status;
+      return s;
+    }
+    case "set_complexity":
+      // No-op when the deterministic re-classification lands on the same value
+      // so a full re-plan doesn't bump the plan version (§44/§49).
+      if (s.complexity === update.value) return state;
+      s.complexity = update.value;
+      return s;
+    case "set_presentation":
+      if (JSON.stringify(s.presentation) === JSON.stringify(update.value)) return state;
+      s.presentation = update.value;
+      return s;
   }
 }
 
@@ -276,4 +386,21 @@ export function applyPlannerResponse(raw: unknown, base: ProjectState): ApplyRes
     state.version = base.version + 1;
   }
   return { state, changed };
+}
+
+/**
+ * Apply a batch of StateUpdate ops to a state, threading each op's result into
+ * the next (forward state propagation). Returns the final state WITHOUT bumping
+ * the version — the caller decides versioning. No-op ops leave the state
+ * reference unchanged so a full re-plan is stable (§44). Used by the planner
+ * orchestrator so downstream generators (e.g. test cases) see entities
+ * produced earlier in the same batch.
+ */
+export function applyUpdates(base: ProjectState, updates: StateUpdate[]): ProjectState {
+  let state = base;
+  for (const u of updates) {
+    stateUpdateSchema.parse(u); // validate defensively (ops may be AI-sourced)
+    state = applyUpdate(state, u);
+  }
+  return state;
 }
